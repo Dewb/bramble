@@ -48,6 +48,7 @@ int heaviest_intensity = 100;
 int heaviest_duration = 140;
 int caesura_duration = 270;
 
+int debounce_time = 40;
 int solenoid_open_time = 120;
 int thinking_time_min = 1500;
 int thinking_time_max = 5500;
@@ -193,19 +194,28 @@ void setup() {
   
   digitalWrite(SOLENOID_PIN, LOW);
   digitalWrite(BUTTON_PIN, LOW);
-  digitalWrite(BUTTON_LED_PIN, LOW);
+  digitalWrite(BUTTON_LED_PIN, HIGH);
 }
 
 void loop() {
   if (mode == MODE_MANUAL) {
+    
     if (digitalRead(BUTTON_PIN) == HIGH) {
       digitalWrite(SOLENOID_PIN, HIGH);
     } else {
       digitalWrite(SOLENOID_PIN, LOW);
     }
+    
   } else if (mode == MODE_SPEECH) {
     
-    while (digitalRead(BUTTON_PIN) == LOW) {
+    // wait for button press
+    while (true) {
+      if (digitalRead(BUTTON_PIN) == HIGH) {
+        delay(debounce_time);
+        if (digitalRead(BUTTON_PIN) == HIGH) {
+          break;
+        }
+      }
     }
     digitalWrite(BUTTON_LED_PIN, LOW);
     
