@@ -6,6 +6,10 @@
 // 08/21/2015
 
 
+#define SOLENOID_PIN 4
+#define BUTTON_PIN 2
+#define BUTTON_LED_PIN 5
+
 #define PHRASE_MAX_LENGTH 60
 char phrase[PHRASE_MAX_LENGTH];
 
@@ -16,7 +20,8 @@ enum syllable {
   SYL_HEAVY,
   SYL_HEAVIER,
   SYL_HEAVIEST,
-  SYL_CAESURA
+  SYL_CAESURA,
+  SYL_BEAT
 };
 
 // milliseconds per syllable
@@ -41,7 +46,7 @@ int thinking_time_min = 1500;
 int thinking_time_max = 5500;
 int refill_time = 2000;
 
-int intensity_drain_correction = 3;
+float intensity_drain_correction = 0.015;
 
 enum modeType {
   MODE_SPEECH,
@@ -49,10 +54,6 @@ enum modeType {
 };
 
 modeType mode = MODE_SPEECH;
-
-#define SOLENOID_PIN 4
-#define BUTTON_PIN 2
-#define BUTTON_LED_PIN 5
 
 bool coinflip() {
   if (random(0, 1) == 0) {
@@ -142,6 +143,37 @@ void create_rhythm_iambic_pentameter(char* phrase, int lines) {
 
 void create_rhythm_common_metre(char* phrase, int lines) {
   // e.g. John Newton, Edna St. Vincent Millay
+  // iambic tetrameter alternating with iambic trimeter
+  // https://en.wikipedia.org/wiki/Common_metre
+  char index = 0;
+  for (int line = 0; line < lines; line++) {
+    if (line % 2 == 0) {
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      if (random(0, 4) == 0) {
+        phrase[index++] = SYL_BEAT;
+      }
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      phrase[index++] = SYL_BEAT;
+    } else {
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      phrase[index++] = SYL_LIGHT;
+      if (random(0, 4) == 0) {
+        phrase[index++] = SYL_BEAT;
+      }
+      phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+      phrase[index++] = SYL_CAESURA;
+    }
+  }
+  phrase[index++] = PHRASE_END;
 }
 
 void setup() {
@@ -163,7 +195,8 @@ void toggleSolenoid(int ms_on, int ms_off) {
 
 void speakSolenoidSyllable(int syllableNominalLength, int intensity, int duration) {
   int ms_on = solenoid_open_time * (intensity / 100.0);
-  int ms_off = (duration / 100.0) * syllableNominalLength - ms_on;
+  int ms_total = (duration / 100.0) * syllableNominalLength;
+  int ms_off = ms_total > ms_on ? ms_total - ms_on : 20;
   toggleSolenoid(ms_on, ms_off);
 }
 
@@ -188,47 +221,52 @@ void loop() {
     if (meterChoice == 0) {
       create_rhythm_saturnian(phrase, 2);
     } else if (meterChoice == 1) {
-      create_rhythm_iambic_pentameter(phrase, 2);
-    } else {
       create_rhythm_iambic_pentameter(phrase, 4);
+    } else {
+      create_rhythm_common_metre(phrase, 4);
     }
     
     int syllableLength = random(syllable_time_min, syllable_time_max);
     
     int i = 0;
-    int dc = 0;
+    float dc = 1.0;
     
     while (phrase[i] != PHRASE_END && i < PHRASE_MAX_LENGTH) {
       switch (phrase[i]) {
       case SYL_LIGHT:
         {
-          speakSolenoidSyllable(syllableLength, light_intensity + dc, light_duration);
+          speakSolenoidSyllable(syllableLength, light_intensity * dc, light_duration);
         }
         break;
       case SYL_DBLLIGHT:
         {
-          speakSolenoidSyllable(syllableLength, light_intensity + dc, heavy_duration / 2);
-          speakSolenoidSyllable(syllableLength, light_intensity + dc, heavy_duration / 2);
+          speakSolenoidSyllable(syllableLength, light_intensity * dc, heavy_duration / 2);
+          speakSolenoidSyllable(syllableLength, light_intensity * dc, heavy_duration / 2);
         }
         break;
       case SYL_HEAVY:
         {
-          speakSolenoidSyllable(syllableLength, heavy_intensity + dc, heavy_duration);
+          speakSolenoidSyllable(syllableLength, heavy_intensity * dc, heavy_duration);
         }
         break;
       case SYL_HEAVIER:
         {
-          speakSolenoidSyllable(syllableLength, heavier_intensity + dc, heavier_duration);
+          speakSolenoidSyllable(syllableLength, heavier_intensity * dc, heavier_duration);
         }
         break;
       case SYL_HEAVIEST:
         {
-          speakSolenoidSyllable(syllableLength, heaviest_intensity + dc, heaviest_duration);
+          speakSolenoidSyllable(syllableLength, heaviest_intensity * dc, heaviest_duration);
         }
         break;
       case SYL_CAESURA:
         {
           delay(caesura_duration / 100.0 * syllableLength);
+        }
+        break;
+      case SYL_BEAT:
+        {
+          delay(syllableLength);
         }
         break;
       }
