@@ -1,3 +1,10 @@
+// The Word of the Burning Bramble
+// http://burningman.org/event/brc/2015-art-installations/
+// Talking solenoid core
+// Michael Dewberry
+// dewb.org
+// 08/21/2015
+
 
 #define PHRASE_MAX_LENGTH 60
 char phrase[PHRASE_MAX_LENGTH];
@@ -29,10 +36,12 @@ int heaviest_intensity = 100;
 int heaviest_duration = 140;
 int caesura_duration = 270;
 
-int solenoid_open_time = 200;
+int solenoid_open_time = 120;
 int thinking_time_min = 1500;
 int thinking_time_max = 5500;
 int refill_time = 2000;
+
+int intensity_drain_correction = 3;
 
 enum modeType {
   MODE_SPEECH,
@@ -187,32 +196,34 @@ void loop() {
     int syllableLength = random(syllable_time_min, syllable_time_max);
     
     int i = 0;
+    int dc = 0;
+    
     while (phrase[i] != PHRASE_END && i < PHRASE_MAX_LENGTH) {
       switch (phrase[i]) {
       case SYL_LIGHT:
         {
-          speakSolenoidSyllable(syllableLength, light_intensity, light_duration);
+          speakSolenoidSyllable(syllableLength, light_intensity + dc, light_duration);
         }
         break;
       case SYL_DBLLIGHT:
         {
-          speakSolenoidSyllable(syllableLength, light_intensity, heavy_duration / 2);
-          speakSolenoidSyllable(syllableLength, light_intensity, heavy_duration / 2);
+          speakSolenoidSyllable(syllableLength, light_intensity + dc, heavy_duration / 2);
+          speakSolenoidSyllable(syllableLength, light_intensity + dc, heavy_duration / 2);
         }
         break;
       case SYL_HEAVY:
         {
-          speakSolenoidSyllable(syllableLength, heavy_intensity, heavy_duration);
+          speakSolenoidSyllable(syllableLength, heavy_intensity + dc, heavy_duration);
         }
         break;
       case SYL_HEAVIER:
         {
-          speakSolenoidSyllable(syllableLength, heavier_intensity, heavier_duration);
+          speakSolenoidSyllable(syllableLength, heavier_intensity + dc, heavier_duration);
         }
         break;
       case SYL_HEAVIEST:
         {
-          speakSolenoidSyllable(syllableLength, heaviest_intensity, heaviest_duration);
+          speakSolenoidSyllable(syllableLength, heaviest_intensity + dc, heaviest_duration);
         }
         break;
       case SYL_CAESURA:
@@ -221,7 +232,9 @@ void loop() {
         }
         break;
       }
+      
       i++;
+      dc += intensity_drain_correction;
     }
     
     delay(refill_time);
