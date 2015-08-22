@@ -1,5 +1,5 @@
 
-#define PHRASE_MAX_LENGTH 25
+#define PHRASE_MAX_LENGTH 60
 char phrase[PHRASE_MAX_LENGTH];
 
 enum syllable {
@@ -12,21 +12,27 @@ enum syllable {
   SYL_CAESURA
 };
 
-int light_on_time = 40;
-int light_total_time = 200;
-int heavy_on_time = 80;
-int heavy_total_time = 240;
-int heavier_on_time = 100;
-int heavier_total_time = 240;
-int heaviest_on_time = 140;
-int heaviest_total_time = 240;
-int dbllight_on_time = 40;
-int dbllight_gap_time = 30;
-int dbllight_total_time = 240;
-int caesura_time = 400;
+// milliseconds per syllable
+// based on SPM of TED talks, from http://sixminutes.dlugan.com/speaking-rate/
+int syllable_time_max = 400; 
+//int syllable_time_max = 300; // 200 SPM (Al Gore)
+//int syllable_time_min = 221; // 271 SPM (Jacqueline Novogratz)
+int syllable_time_min = 240;
+
+int light_intensity = 30;
+int light_duration = 75;
+int heavy_intensity = 55;
+int heavy_duration = 100;
+int heavier_intensity = 75;
+int heavier_duration = 110;
+int heaviest_intensity = 100;
+int heaviest_duration = 140;
+int caesura_duration = 270;
+
+int solenoid_open_time = 200;
 int thinking_time_min = 1500;
 int thinking_time_max = 5500;
-int refill_time = 5000;
+int refill_time = 2000;
 
 enum modeType {
   MODE_SPEECH,
@@ -62,40 +68,44 @@ int pickFromThree(int a, int b, int c) {
   }
 }
 
-void create_rhythm_saturnian(char* phrase) {
+void create_rhythm_saturnian(char* phrase, int lines) {
   // e.g. Old Latin, Livius Andronicus 
+  // https://en.wikipedia.org/wiki/Saturnian_(poetry)
   char index = 0;
-  phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
-  phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
-  phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
-  phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
-  phrase[index++] = SYL_CAESURA;
-  phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
-  phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
-  phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
-  phrase[index++] = SYL_CAESURA;
-  if (coinflip()) {
-    phrase[index++] = SYL_HEAVY;
-    phrase[index++] = SYL_LIGHT;
+  for (int line = 0; line < lines; line++) {
+    phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
+    phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
+    phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
     phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
     phrase[index++] = SYL_CAESURA;
     phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
     phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
     phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
-  } else {
-    phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
-    phrase[index++] = SYL_HEAVY;
-    phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
-    phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
-    phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
+    phrase[index++] = SYL_CAESURA;
+    if (coinflip()) {
+      phrase[index++] = SYL_HEAVY;
+      phrase[index++] = SYL_LIGHT;
+      phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
+      phrase[index++] = SYL_CAESURA;
+      phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
+      phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
+      phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
+    } else {
+      phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
+      phrase[index++] = SYL_HEAVY;
+      phrase[index++] = pickFromThree(SYL_LIGHT, SYL_HEAVY, SYL_DBLLIGHT);
+      phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
+      phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
+    }
   }
   phrase[index++] = PHRASE_END;
 }
 
-void create_rhythm_iambic_pentameter(char* phrase) {
+void create_rhythm_iambic_pentameter(char* phrase, int lines) {
   // e.g. Shakespeare, John Donne
+  // https://en.wikipedia.org/wiki/Iambic_pentameter
   char index = 0;
-  for (int line = 0; line < 2; line++) {
+  for (int line = 0; line < lines; line++) {
     if (coinflip()) {
       phrase[index++] = SYL_LIGHT;
       phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
@@ -105,7 +115,7 @@ void create_rhythm_iambic_pentameter(char* phrase) {
     }
     phrase[index++] = SYL_LIGHT;
     phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
-    if (coinflip()) {
+    if (random(0, 4) == 0) {
       phrase[index++] = SYL_CAESURA;
     }
     phrase[index++] = pickFromTwo(SYL_LIGHT, SYL_HEAVY);
@@ -114,12 +124,14 @@ void create_rhythm_iambic_pentameter(char* phrase) {
     phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
     phrase[index++] = pickFromThree(SYL_LIGHT, SYL_LIGHT, SYL_DBLLIGHT);
     phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
-    phrase[index++] = SYL_CAESURA;
+    if (random(0, 4) != 0) {
+      phrase[index++] = SYL_CAESURA;
+    }
   }
   phrase[index++] = PHRASE_END;
 }
 
-void create_rhythm_common_metre(char* phrase) {
+void create_rhythm_common_metre(char* phrase, int lines) {
   // e.g. John Newton, Edna St. Vincent Millay
 }
 
@@ -138,6 +150,12 @@ void toggleSolenoid(int ms_on, int ms_off) {
   delay(ms_on);
   digitalWrite(SOLENOID_PIN, LOW);
   delay(ms_off);
+}
+
+void speakSolenoidSyllable(int syllableNominalLength, int intensity, int duration) {
+  int ms_on = solenoid_open_time * (intensity / 100.0);
+  int ms_off = (duration / 100.0) * syllableNominalLength - ms_on;
+  toggleSolenoid(ms_on, ms_off);
 }
 
 void loop() {
@@ -159,45 +177,47 @@ void loop() {
     
     int meterChoice = random(0, 3);
     if (meterChoice == 0) {
-      create_rhythm_saturnian(phrase);
+      create_rhythm_saturnian(phrase, 2);
     } else if (meterChoice == 1) {
-      create_rhythm_iambic_pentameter(phrase);
+      create_rhythm_iambic_pentameter(phrase, 2);
     } else {
-      create_rhythm_iambic_pentameter(phrase);
+      create_rhythm_iambic_pentameter(phrase, 4);
     }
+    
+    int syllableLength = random(syllable_time_min, syllable_time_max);
     
     int i = 0;
     while (phrase[i] != PHRASE_END && i < PHRASE_MAX_LENGTH) {
       switch (phrase[i]) {
       case SYL_LIGHT:
         {
-          toggleSolenoid(light_on_time, light_total_time - light_on_time);
+          speakSolenoidSyllable(syllableLength, light_intensity, light_duration);
         }
         break;
       case SYL_DBLLIGHT:
         {
-          toggleSolenoid(dbllight_on_time, dbllight_gap_time);
-          toggleSolenoid(dbllight_on_time, dbllight_total_time - 2 * dbllight_on_time - dbllight_gap_time);
+          speakSolenoidSyllable(syllableLength, light_intensity, heavy_duration / 2);
+          speakSolenoidSyllable(syllableLength, light_intensity, heavy_duration / 2);
         }
         break;
       case SYL_HEAVY:
         {
-          toggleSolenoid(heavy_on_time, heavy_total_time - heavy_on_time);
+          speakSolenoidSyllable(syllableLength, heavy_intensity, heavy_duration);
         }
         break;
       case SYL_HEAVIER:
         {
-          toggleSolenoid(heavier_on_time, heavier_total_time - heavier_on_time);          
+          speakSolenoidSyllable(syllableLength, heavier_intensity, heavier_duration);
         }
         break;
       case SYL_HEAVIEST:
         {
-          toggleSolenoid(heaviest_on_time, heaviest_total_time - heaviest_on_time);
+          speakSolenoidSyllable(syllableLength, heaviest_intensity, heaviest_duration);
         }
         break;
       case SYL_CAESURA:
         {
-          delay(caesura_time);
+          delay(caesura_duration / 100.0 * syllableLength);
         }
         break;
       }
