@@ -13,6 +13,13 @@
 #define PHRASE_MAX_LENGTH 60
 char phrase[PHRASE_MAX_LENGTH];
 
+enum modeType {
+  MODE_SPEECH,
+  MODE_MANUAL
+};
+
+modeType mode = MODE_SPEECH;
+
 enum syllable {
   PHRASE_END = 0,
   SYL_LIGHT,
@@ -48,19 +55,8 @@ int refill_time = 2000;
 
 float intensity_drain_correction = 0.015;
 
-enum modeType {
-  MODE_SPEECH,
-  MODE_MANUAL
-};
-
-modeType mode = MODE_SPEECH;
-
 bool coinflip() {
-  if (random(0, 1) == 0) {
-    return true;
-  } else {
-    return false;
-  }
+  return random(0, 1) == 0;
 }
 
 int pickFromTwo(int a, int b) {
@@ -176,16 +172,6 @@ void create_rhythm_common_metre(char* phrase, int lines) {
   phrase[index++] = PHRASE_END;
 }
 
-void setup() {
-  pinMode(SOLENOID_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);
-  pinMode(BUTTON_LED_PIN, OUTPUT);
-  
-  digitalWrite(SOLENOID_PIN, LOW);
-  digitalWrite(BUTTON_PIN, LOW);
-  digitalWrite(BUTTON_LED_PIN, LOW);
-}
-
 void toggleSolenoid(int ms_on, int ms_off) {
   digitalWrite(SOLENOID_PIN, HIGH);
   delay(ms_on);
@@ -198,6 +184,16 @@ void speakSolenoidSyllable(int syllableNominalLength, int intensity, int duratio
   int ms_total = (duration / 100.0) * syllableNominalLength;
   int ms_off = ms_total > ms_on ? ms_total - ms_on : 20;
   toggleSolenoid(ms_on, ms_off);
+}
+
+void setup() {
+  pinMode(SOLENOID_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT);
+  pinMode(BUTTON_LED_PIN, OUTPUT);
+  
+  digitalWrite(SOLENOID_PIN, LOW);
+  digitalWrite(BUTTON_PIN, LOW);
+  digitalWrite(BUTTON_LED_PIN, LOW);
 }
 
 void loop() {
