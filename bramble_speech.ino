@@ -6,6 +6,9 @@
 // 08/21/2015
 
 #include <Bounce2.h>
+#include <EEPROM.h>
+
+#define EEPROM_SEED_LOCATION 0
 
 #define MODE_SWITCH_PIN 3
 #define BUTTON_PIN 2
@@ -197,7 +200,12 @@ void talk() {
   
   delay(thinking_time_min + random(0, thinking_time_max - thinking_time_min));
   
-  randomSeed(analogRead(0));
+  // guarantee long stochastic arc across reboots (h/t Giles Hall)
+  long seed;
+  EEPROM.get(EEPROM_SEED_LOCATION, seed);
+  randomSeed(seed);
+  seed = random(-2147483648, 2147483647L);
+  EEPROM.put(EEPROM_SEED_LOCATION, seed); 
   
   int meterChoice = random(0, 3);
   if (meterChoice == 0) {
