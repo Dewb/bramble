@@ -210,20 +210,20 @@ void talk() {
   digitalWrite(BUTTON_LED_PIN, LOW);
   
   dbgOut("Thinking...");
-  delay(thinking_time_min + random(0, thinking_time_max - thinking_time_min));
+  delay(random(thinking_time_min, thinking_time_max + 1));
   
   // guarantee long stochastic arc across reboots (h/t Giles Hall)
   long seed;
   EEPROM.get(EEPROM_SEED_LOCATION, seed);
   randomSeed(seed);
-  seed = random(-2147483648, 2147483647L);
+  seed = random(-2147483648L, 2147483647L);
   EEPROM.put(EEPROM_SEED_LOCATION, seed); 
   
-  int meterChoice = random(0, 3);
-  if (meterChoice == 0) {
+  int meterChoice = random(0, 4);
+  if (meterChoice <= 1) {
     dbgOut("Divining a Saturnian quip...");
     create_rhythm_saturnian(phrase, 2);
-  } else if (meterChoice == 1) {
+  } else if (meterChoice == 2) {
     dbgOut("Penning a verse of iambic pentameter...");
     create_rhythm_iambic_pentameter(phrase, 4);
   } else {
@@ -231,7 +231,7 @@ void talk() {
     create_rhythm_common_metre(phrase, 4);
   }
   
-  int syllableLength = random(syllable_time_min, syllable_time_max);
+  int syllableLength = random(syllable_time_min, syllable_time_max + 1);
   
   int i = 0;
   float dc = 1.0;
