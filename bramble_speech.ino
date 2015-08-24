@@ -5,10 +5,15 @@
 // dewb.org
 // 08/21/2015
 
+#include <Bounce2.h>
 
-#define SOLENOID_PIN 4
+#define MODE_SWITCH_PIN 3
 #define BUTTON_PIN 2
-#define BUTTON_LED_PIN 5
+#define BUTTON_LED_PIN 6
+#define SOLENOID_PIN 7
+
+Bounce modeSwitchBouncer = Bounce();
+Bounce buttonBouncer = Bounce();
 
 #define PHRASE_MAX_LENGTH 60
 char phrase[PHRASE_MAX_LENGTH];
@@ -187,101 +192,111 @@ void speakSolenoidSyllable(int syllableNominalLength, int intensity, int duratio
   toggleSolenoid(ms_on, ms_off);
 }
 
+void talk() {
+  digitalWrite(BUTTON_LED_PIN, LOW);
+  
+  delay(thinking_time_min + random(0, thinking_time_max - thinking_time_min));
+  
+  randomSeed(analogRead(0));
+  
+  int meterChoice = random(0, 3);
+  if (meterChoice == 0) {
+    create_rhythm_saturnian(phrase, 2);
+  } else if (meterChoice == 1) {
+    create_rhythm_iambic_pentameter(phrase, 4);
+  } else {
+    create_rhythm_common_metre(phrase, 4);
+  }
+  
+  int syllableLength = random(syllable_time_min, syllable_time_max);
+  
+  int i = 0;
+  float dc = 1.0;
+  
+  while (phrase[i] != PHRASE_END && i < PHRASE_MAX_LENGTH) {
+    switch (phrase[i]) {
+    case SYL_LIGHT:
+      {
+        speakSolenoidSyllable(syllableLength, light_intensity * dc, light_duration);
+      }
+      break;
+    case SYL_DBLLIGHT:
+      {
+        speakSolenoidSyllable(syllableLength, light_intensity * dc, heavy_duration / 2);
+        speakSolenoidSyllable(syllableLength, light_intensity * dc, heavy_duration / 2);
+      }
+      break;
+    case SYL_HEAVY:
+      {
+        speakSolenoidSyllable(syllableLength, heavy_intensity * dc, heavy_duration);
+      }
+      break;
+    case SYL_HEAVIER:
+      {
+        speakSolenoidSyllable(syllableLength, heavier_intensity * dc, heavier_duration);
+      }
+      break;
+    case SYL_HEAVIEST:
+      {
+        speakSolenoidSyllable(syllableLength, heaviest_intensity * dc, heaviest_duration);
+      }
+      break;
+    case SYL_CAESURA:
+      {
+        delay(caesura_duration / 100.0 * syllableLength);
+      }
+      break;
+    case SYL_BEAT:
+      {
+        delay(syllableLength);
+      }
+      break;
+    }
+    
+    i++;
+    dc += intensity_drain_correction;
+  }
+  
+  delay(refill_time);
+  digitalWrite(BUTTON_LED_PIN, HIGH);
+}
+
 void setup() {
+  pinMode(MODE_SWITCH_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  
+  modeSwitchBouncer.attach(MODE_SWITCH_PIN);
+  modeSwitchBouncer.interval(5);
+  buttonBouncer.attach(BUTTON_PIN);
+  buttonBouncer.interval(5);
+  
   pinMode(SOLENOID_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);
   pinMode(BUTTON_LED_PIN, OUTPUT);
   
   digitalWrite(SOLENOID_PIN, LOW);
-  digitalWrite(BUTTON_PIN, LOW);
   digitalWrite(BUTTON_LED_PIN, HIGH);
 }
 
 void loop() {
+  modeSwitchBouncer.update();
+  buttonBouncer.update();
+  
+  int modeSwitchState = modeSwitchBouncer.read();
+  int buttonState = buttonBouncer.read();
+  
+  if (modeSwitchState == LOW) {
+    mode = MODE_MANUAL;
+  } else {
+    mode = MODE_SPEECH;
+  }
+  
   if (mode == MODE_MANUAL) {
-    
-    if (digitalRead(BUTTON_PIN) == HIGH) {
+    if (buttonState == LOW) {
       digitalWrite(SOLENOID_PIN, HIGH);
     } else {
       digitalWrite(SOLENOID_PIN, LOW);
-    }
-    
-  } else if (mode == MODE_SPEECH) {
-    
-    // wait for button press
-    while (true) {
-      if (digitalRead(BUTTON_PIN) == HIGH) {
-        delay(debounce_time);
-        if (digitalRead(BUTTON_PIN) == HIGH) {
-          break;
-        }
-      }
-    }
-    digitalWrite(BUTTON_LED_PIN, LOW);
-    
-    delay(thinking_time_min + random(0, thinking_time_max - thinking_time_min));
-    
-    randomSeed(analogRead(0));
-    
-    int meterChoice = random(0, 3);
-    if (meterChoice == 0) {
-      create_rhythm_saturnian(phrase, 2);
-    } else if (meterChoice == 1) {
-      create_rhythm_iambic_pentameter(phrase, 4);
-    } else {
-      create_rhythm_common_metre(phrase, 4);
-    }
-    
-    int syllableLength = random(syllable_time_min, syllable_time_max);
-    
-    int i = 0;
-    float dc = 1.0;
-    
-    while (phrase[i] != PHRASE_END && i < PHRASE_MAX_LENGTH) {
-      switch (phrase[i]) {
-      case SYL_LIGHT:
-        {
-          speakSolenoidSyllable(syllableLength, light_intensity * dc, light_duration);
-        }
-        break;
-      case SYL_DBLLIGHT:
-        {
-          speakSolenoidSyllable(syllableLength, light_intensity * dc, heavy_duration / 2);
-          speakSolenoidSyllable(syllableLength, light_intensity * dc, heavy_duration / 2);
-        }
-        break;
-      case SYL_HEAVY:
-        {
-          speakSolenoidSyllable(syllableLength, heavy_intensity * dc, heavy_duration);
-        }
-        break;
-      case SYL_HEAVIER:
-        {
-          speakSolenoidSyllable(syllableLength, heavier_intensity * dc, heavier_duration);
-        }
-        break;
-      case SYL_HEAVIEST:
-        {
-          speakSolenoidSyllable(syllableLength, heaviest_intensity * dc, heaviest_duration);
-        }
-        break;
-      case SYL_CAESURA:
-        {
-          delay(caesura_duration / 100.0 * syllableLength);
-        }
-        break;
-      case SYL_BEAT:
-        {
-          delay(syllableLength);
-        }
-        break;
-      }
-      
-      i++;
-      dc += intensity_drain_correction;
-    }
-    
-    delay(refill_time);
-    digitalWrite(BUTTON_LED_PIN, HIGH);
+    }  
+  } else if (mode == MODE_SPEECH && buttonState == LOW) {
+    talk();    
   }
 }
