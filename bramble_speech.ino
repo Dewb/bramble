@@ -43,10 +43,10 @@ enum syllable {
 
 // milliseconds per syllable
 // based on SPM of TED talks, from http://sixminutes.dlugan.com/speaking-rate/
-int syllable_time_max = 400; 
+int syllable_time_max = 420; 
 //int syllable_time_max = 300; // 200 SPM (Al Gore)
 //int syllable_time_min = 221; // 271 SPM (Jacqueline Novogratz)
-int syllable_time_min = 240;
+int syllable_time_min = 280;
 
 int light_intensity = 30;
 int light_duration = 75;
@@ -58,12 +58,13 @@ int heaviest_intensity = 100;
 int heaviest_duration = 140;
 int caesura_duration = 270;
 
-int random_duration_range = 10;
+int random_duration_range = 12;
 int random_intensity_range = 15;
 int solenoid_open_time = 120;
-int thinking_time_min = 1500;
-int thinking_time_max = 5500;
-int refill_time = 2000;
+int thinking_time_min = 1800;
+int thinking_time_max = 2800;
+int refill_time = 5000;
+int button_hold_activation_time = 2000;
 
 float intensity_drain_correction = 0.015;
 
@@ -131,6 +132,9 @@ void create_rhythm_iambic_pentameter(char* phrase, int lines) {
       phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
       phrase[index++] = SYL_LIGHT;
     }
+    if (random(0, 3) == 0) {
+      phrase[index++] = SYL_BEAT;
+    }
     phrase[index++] = SYL_LIGHT;
     phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
     if (random(0, 4) == 0) {
@@ -158,13 +162,13 @@ void create_rhythm_common_metre(char* phrase, int lines) {
     if (line % 2 == 0) {
       phrase[index++] = SYL_LIGHT;
       phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
-      if (random(0, 5) == 0) {
+      if (random(0, 3) == 0) {
         phrase[index++] = SYL_DBLLIGHT;
       } else {
         phrase[index++] = SYL_LIGHT;
       }
       phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
-      if (random(0, 4) == 0) {
+      if (random(0, 3) == 0) {
         phrase[index++] = SYL_BEAT;
       }
       phrase[index++] = SYL_LIGHT;
@@ -175,14 +179,14 @@ void create_rhythm_common_metre(char* phrase, int lines) {
     } else {
       phrase[index++] = SYL_LIGHT;
       phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
-      if (random(0, 5) == 0) {
+      if (random(0, 3) == 0) {
         phrase[index++] = SYL_DBLLIGHT;
       } else {
         phrase[index++] = SYL_LIGHT;
       }
       phrase[index++] = pickFromTwo(SYL_HEAVY, SYL_HEAVIER);
       phrase[index++] = SYL_LIGHT;
-      if (random(0, 4) == 0) {
+      if (random(0, 3) == 0) {
         phrase[index++] = SYL_BEAT;
       }
       phrase[index++] = pickFromThree(SYL_HEAVY, SYL_HEAVIER, SYL_HEAVIEST);
@@ -211,14 +215,7 @@ void talk() {
   
   dbgOut("Thinking...");
   delay(random(thinking_time_min, thinking_time_max + 1));
-  
-  // guarantee long stochastic arc across reboots (h/t Giles Hall)
-  long seed;
-  EEPROM.get(EEPROM_SEED_LOCATION, seed);
-  randomSeed(seed);
-  seed = random(-2147483648L, 2147483647L);
-  EEPROM.put(EEPROM_SEED_LOCATION, seed); 
-  
+    
   int meterChoice = random(0, 4);
   if (meterChoice <= 1) {
     dbgOut("Divining a Saturnian quip...");
@@ -290,6 +287,14 @@ void talk() {
 }
 
 void setup() {
+  
+  // guarantee long stochastic arc across reboots (h/t Giles Hall)
+  long seed;
+  EEPROM.get(EEPROM_SEED_LOCATION, seed);
+  randomSeed(seed);
+  seed = random(-2147483648L, 2147483647L);
+  EEPROM.put(EEPROM_SEED_LOCATION, seed); 
+  
   pinMode(MODE_SWITCH_PIN, INPUT_PULLUP);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   
@@ -324,18 +329,30 @@ void loop() {
   }
   
   if (mode == MODE_MANUAL) {
+  
+    // Button directly controls solenoid
     if (buttonState == LOW) {
       digitalWrite(SOLENOID_PIN, HIGH);
     } else {
       digitalWrite(SOLENOID_PIN, LOW);
     }  
-  } else if (mode == MODE_SPEECH && buttonState == LOW) {
-    talk();  
+  
+  } else if (mode == MODE_SPEECH && buttonBouncer.fell()) {
+
+    // Time how long button is held down
+    unsigned long timer = millis();
     while (buttonState == LOW) {
       buttonBouncer.update();
       buttonState = buttonBouncer.read();
     }
-    dbgOut("Ready.");    
+
+    if (millis() - timer > button_hold_activation_time)
+    {
+      // Button was held down long enough for the answer to feel earned
+      talk();  
+      dbgOut("Ready.");    
+    }
+    
   }
   
 }
